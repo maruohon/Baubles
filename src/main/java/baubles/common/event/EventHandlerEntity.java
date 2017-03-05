@@ -5,16 +5,7 @@ import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
-
-import baubles.api.BaubleType;
-import baubles.api.BaublesApi;
-import baubles.api.IBauble;
-import baubles.api.cap.BaublesContainer;
-import baubles.api.cap.BaublesContainerProvider;
-import baubles.api.cap.IBaublesItemHandler;
-import baubles.common.Baubles;
-import baubles.common.network.PacketHandler;
-import baubles.common.network.PacketSync;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
@@ -25,7 +16,6 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.text.TextFormatting;
-import net.minecraft.util.text.translation.I18n;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
@@ -33,6 +23,15 @@ import net.minecraftforge.event.entity.player.PlayerDropsEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedOutEvent;
+import baubles.api.BaubleType;
+import baubles.api.BaublesApi;
+import baubles.api.IBauble;
+import baubles.api.cap.BaublesContainer;
+import baubles.api.cap.BaublesContainerProvider;
+import baubles.api.cap.IBaublesItemHandler;
+import baubles.common.Baubles;
+import baubles.common.network.PacketHandler;
+import baubles.common.network.PacketSync;
 
 public class EventHandlerEntity {
 	
@@ -52,8 +51,8 @@ public class EventHandlerEntity {
 	}
 	
 	@SubscribeEvent
-	public void attachCapabilitiesPlayer(AttachCapabilitiesEvent.Entity event) {
-		if (event.getEntity() instanceof EntityPlayer) {
+	public void attachCapabilitiesPlayer(AttachCapabilitiesEvent<Entity> event) {
+		if (event.getObject() instanceof EntityPlayer) {
 			event.addCapability(new ResourceLocation(Baubles.MODID,"container"), 
 					new BaublesContainerProvider(new BaublesContainer()));	
 		}
@@ -128,8 +127,8 @@ public class EventHandlerEntity {
 	@SubscribeEvent
 	public void playerDeath(PlayerDropsEvent event) {
 		if (event.getEntity() instanceof EntityPlayer
-				&& !event.getEntity().worldObj.isRemote
-				&& !event.getEntity().worldObj.getGameRules().getBoolean("keepInventory")) {			
+				&& !event.getEntity().getEntityWorld().isRemote
+				&& !event.getEntity().getEntityWorld().getGameRules().getBoolean("keepInventory")) {			
 			dropItemsAt(event.getEntityPlayer(),event.getDrops(),event.getEntityPlayer());						
 		}
 	}
@@ -138,12 +137,12 @@ public class EventHandlerEntity {
 		IBaublesItemHandler baubles = BaublesApi.getBaublesHandler(player);
 		for (int i = 0; i < baubles.getSlots(); ++i) {
 			if (baubles.getStackInSlot(i) != null) {
-				EntityItem ei = new EntityItem(e.worldObj,
+				EntityItem ei = new EntityItem(e.getEntityWorld(),
 						e.posX, e.posY + e.getEyeHeight(), e.posZ,
 						baubles.getStackInSlot(i).copy());
 				ei.setPickupDelay(40);
-				float f1 = e.worldObj.rand.nextFloat() * 0.5F;
-				float f2 = e.worldObj.rand.nextFloat() * (float) Math.PI * 2.0F;
+				float f1 = e.getEntityWorld().rand.nextFloat() * 0.5F;
+				float f2 = e.getEntityWorld().rand.nextFloat() * (float) Math.PI * 2.0F;
 				ei.motionX = (double) (-MathHelper.sin(f2) * f1);
 				ei.motionZ = (double) (MathHelper.cos(f2) * f1);
 				ei.motionY = 0.20000000298023224D;
@@ -158,7 +157,7 @@ public class EventHandlerEntity {
 	public void tooltipEvent(ItemTooltipEvent event) {
 		if (event.getItemStack()!=null && event.getItemStack().getItem() instanceof IBauble) {
 			BaubleType bt = ((IBauble)event.getItemStack().getItem()).getBaubleType(event.getItemStack());
-			event.getToolTip().add(TextFormatting.GOLD+I18n.translateToLocal("name."+bt));
+			event.getToolTip().add(TextFormatting.GOLD + I18n.format("name." + bt));
 		}
 	}
 	
@@ -175,10 +174,9 @@ public class EventHandlerEntity {
 	}
 	
 	public void loadPlayerBaubles(EntityPlayer player, File file1, File file2) {
-		if (player != null && !player.worldObj.isRemote) {
+		if (player != null && !player.getEntityWorld().isRemote) {
 			try {
 				NBTTagCompound data = null;
-				boolean save = false;
 				if (file1 != null && file1.exists()) {
 					try {
 						FileInputStream fileinputstream = new FileInputStream(file1);
